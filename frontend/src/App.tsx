@@ -123,6 +123,7 @@ function KioskPage() {
   const [isInactive, setIsInactive] = useState(false);
   const [sunriseAt, setSunriseAt] = useState<Date | null>(null);
   const [sunsetAt, setSunsetAt] = useState<Date | null>(null);
+  const [forcedTimeTheme, setForcedTimeTheme] = useState<'dawn' | 'morning' | 'afternoon' | 'evening' | 'night' | null>(null);
   const [weather, setWeather] = useState<{
     temperature: number;
     apparentTemperature: number;
@@ -131,7 +132,8 @@ function KioskPage() {
     updatedAt: string;
   } | null>(null);
   const timeTheme = getTimeTheme(clock, sunsetAt);
-  const isNightTheme = timeTheme === 'night';
+  const effectiveTimeTheme = forcedTimeTheme ?? timeTheme;
+  const isNightTheme = effectiveTimeTheme === 'night';
   const shouldShowInactiveOverlay = isInactive && isNightTheme;
 
   const refresh = useCallback(async () => {
@@ -171,8 +173,8 @@ function KioskPage() {
   }, [refresh]);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-time-theme', timeTheme);
-  }, [timeTheme]);
+    document.documentElement.setAttribute('data-time-theme', effectiveTimeTheme);
+  }, [effectiveTimeTheme]);
 
   useEffect(() => {
     const refreshWeather = async () => {
@@ -889,6 +891,28 @@ function KioskPage() {
         </div>
 
         <footer className="kiosk-footer">
+          <div className="theme-debug-control">
+            <span className="muted">Preview theme</span>
+            <div className="theme-debug-chips">
+              <button
+                type="button"
+                className={`quick-chip ${forcedTimeTheme === null ? 'selected' : ''}`}
+                onClick={() => setForcedTimeTheme(null)}
+              >
+                Auto
+              </button>
+              {(['dawn', 'morning', 'afternoon', 'evening', 'night'] as const).map((theme) => (
+                <button
+                  key={`theme-preview-${theme}`}
+                  type="button"
+                  className={`quick-chip ${forcedTimeTheme === theme ? 'selected' : ''}`}
+                  onClick={() => setForcedTimeTheme(theme)}
+                >
+                  {theme[0].toUpperCase() + theme.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
           <span className="muted">Edit directly on screen</span>
         </footer>
       </div>
