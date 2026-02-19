@@ -32,6 +32,7 @@
   --sun-core: rgba(255, 225, 156, 0.9);
   --sun-ring: rgba(255, 175, 102, 0.45);
   --sun-glow: rgba(255, 149, 91, 0.25);
+  --tap-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 36 36'%3E%3Ccircle cx='18' cy='18' r='12.5' fill='rgba(180,184,191,0.28)'/%3E%3Ccircle cx='18' cy='18' r='9.4' fill='rgba(186,190,198,0.4)'/%3E%3Ccircle cx='18' cy='18' r='6.1' fill='rgba(192,196,204,0.54)'/%3E%3Ccircle cx='18' cy='18' r='12.5' fill='none' stroke='rgba(115,121,133,0.25)' stroke-width='1'/%3E%3C/svg%3E") 18 18, auto;
   color: var(--text);
   background: linear-gradient(180deg, var(--bg-base-top) 0%, var(--bg-base-bottom) 100%);
   text-rendering: optimizeLegibility;
@@ -169,6 +170,7 @@ body {
   position: relative;
   margin: 0;
   min-height: 100vh;
+  font-size: clamp(18px, 0.9vw + 13px, 24px);
   color: var(--text);
   background-image:
     linear-gradient(180deg, var(--scene-dim-overlay), var(--scene-dim-overlay)),
@@ -226,6 +228,14 @@ textarea {
   color: inherit;
 }
 
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 .icon {
   display: inline-flex;
   margin-right: 0.32rem;
@@ -239,7 +249,10 @@ textarea {
   z-index: 1;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 1.1rem 0.8rem;
+  padding: 1.55rem 1.2rem;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .kiosk-shell {
@@ -275,7 +288,7 @@ textarea {
   color: var(--muted);
   text-align: center;
   white-space: nowrap;
-  font-size: clamp(1.1rem, 1.7vw, 1.6rem);
+  font-size: clamp(1.35rem, 2vw, 2rem);
   font-weight: 560;
   letter-spacing: -0.015em;
 }
@@ -290,7 +303,7 @@ textarea {
 }
 
 .clock {
-  font-size: clamp(1.7rem, 2.8vw, 2.6rem);
+  font-size: clamp(2.25rem, 4vw, 3.8rem);
   font-weight: 640;
   letter-spacing: -0.03em;
   white-space: nowrap;
@@ -317,14 +330,14 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 0.32rem;
-  font-size: clamp(1.1rem, 1.65vw, 1.45rem);
+  font-size: clamp(1.35rem, 2.25vw, 2.1rem);
   font-weight: 600;
 }
 
 .sun-times {
   display: inline-flex;
   gap: 0.7rem;
-  font-size: clamp(0.74rem, 0.95vw, 0.9rem);
+  font-size: clamp(0.95rem, 1.25vw, 1.2rem);
   font-weight: 560;
 }
 
@@ -348,7 +361,7 @@ textarea {
 
 .widget-page {
   margin-top: 0.45rem;
-  min-height: clamp(77vh, calc(100vh - 10.5rem), 90vh);
+  min-height: clamp(82vh, calc(100vh - 9rem), 94vh);
   display: flex;
 }
 
@@ -372,12 +385,12 @@ textarea {
 }
 
 .overview-grid .panel h2 {
-  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
   margin-bottom: 0.55rem;
 }
 
 .overview-grid .line-item {
-  font-size: clamp(0.92rem, 1.14vw, 1.04rem);
+  font-size: clamp(1.1rem, 1.45vw, 1.35rem);
   margin: 0.35rem 0;
   padding: 0.2rem 0;
   line-height: 1.28;
@@ -391,9 +404,9 @@ textarea {
 }
 
 .overview-tabs .tab-btn {
-  min-height: 31px;
-  padding: 0.24rem 0.62rem;
-  font-size: 0.76rem;
+  min-height: 42px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.95rem;
 }
 
 .overview-grid .react-resizable-handle {
@@ -472,7 +485,7 @@ textarea {
 .panel h2,
 .card h2 {
   margin-bottom: 0.9rem;
-  font-size: clamp(1.18rem, 1.8vw, 1.5rem);
+  font-size: clamp(1.45rem, 2.35vw, 2.05rem);
   font-weight: 620;
   letter-spacing: -0.01em;
 }
@@ -523,7 +536,7 @@ textarea {
   padding: 0.44rem 0;
   word-break: break-word;
   line-height: 1.35;
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-size: clamp(1.22rem, 1.9vw, 1.65rem);
 }
 
 .calendar-shell {
@@ -537,35 +550,82 @@ textarea {
 
 .calendar-events-layout {
   display: grid;
-  grid-template-columns: minmax(540px, 1.75fr) minmax(430px, 1.25fr);
-  gap: 1.45rem;
-  align-items: start;
+  grid-template-rows: auto 1fr;
+  gap: 1rem;
+  align-items: stretch;
+  min-height: clamp(70vh, calc(100vh - 16rem), 84vh);
 }
 
-.events-right-column {
-  min-width: 0;
-  min-height: 100%;
+.events-top-strip {
+  border: 1px solid color-mix(in srgb, var(--card-border) 75%, transparent);
+  border-radius: var(--radius-soft);
+  background: color-mix(in srgb, var(--surface-1) 86%, transparent);
+  backdrop-filter: blur(16px) saturate(135%);
+  padding: 0.75rem;
 }
 
-.events-right-column .event-preview-group {
-  padding: 0.3rem 0.54rem;
+.events-top-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.45rem;
 }
 
-.event-preview-group {
-  margin-top: 0.6rem;
+.events-top-header h3 {
+  margin: 0;
+  font-size: 1.22rem;
 }
 
-.event-preview-group h3 {
-  margin: 0 0 0.55rem;
-  font-size: 1.05rem;
+.events-top-scroll {
+  display: flex;
+  gap: 0.7rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scroll-snap-type: x proximity;
+}
+
+.events-top-card {
+  flex: 0 0 min(330px, 70vw);
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--card-border) 75%, transparent);
+  border-radius: 16px;
+  background: var(--surface-2);
+  padding: 0.6rem 0.7rem;
+  scroll-snap-align: start;
+}
+
+.events-top-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.events-window-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 42px;
-  padding: 0.35rem 0.95rem;
+  min-height: 28px;
+  padding: 0.12rem 0.58rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--primary) 50%, transparent);
-  background: color-mix(in srgb, var(--primary) 12%, var(--card-solid));
-  color: color-mix(in srgb, var(--primary) 42%, var(--text));
+  font-size: 0.85rem;
+  font-weight: 620;
+  border: 1px solid color-mix(in srgb, var(--primary) 48%, transparent);
+  background: color-mix(in srgb, var(--primary) 15%, var(--surface-1));
+}
+
+.events-top-title {
+  font-size: 1.02rem;
+  font-weight: 620;
+  line-height: 1.25;
+}
+
+.events-top-time,
+.events-top-location {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .calendar-action-row {
@@ -589,8 +649,15 @@ textarea {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
-  font-size: 1.04rem;
+  font-size: 1.2rem;
   font-weight: 620;
+}
+
+.calendar-shell-large {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  margin-bottom: 0;
+  min-height: 0;
 }
 
 .calendar-weekdays,
@@ -600,9 +667,15 @@ textarea {
   gap: 0.35rem;
 }
 
+.calendar-shell-large .calendar-grid {
+  align-content: stretch;
+  grid-auto-rows: 1fr;
+  min-height: 0;
+}
+
 .calendar-weekdays span {
   text-align: center;
-  font-size: 0.94rem;
+  font-size: 1.06rem;
   color: var(--muted);
   font-weight: 610;
 }
@@ -611,11 +684,11 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 52px;
+  min-height: 64px;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--card-border) 72%, transparent);
   background: var(--surface-1);
-  font-size: 1.05rem;
+  font-size: clamp(1.5rem, 2.4vw, 2.05rem);
   font-weight: 610;
 }
 
@@ -647,8 +720,8 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--card-border) 72%, transparent);
   background: var(--surface-2);
@@ -723,8 +796,8 @@ textarea {
 }
 
 .mini-btn {
-  min-height: 34px;
-  min-width: 34px;
+  min-height: 42px;
+  min-width: 42px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--card-border) 70%, transparent);
   background: var(--surface-2);
@@ -750,7 +823,7 @@ textarea {
   border: 1px solid color-mix(in srgb, var(--card-border) 70%, transparent);
   background: var(--surface-2);
   border-radius: 18px;
-  min-height: 74px;
+  min-height: 88px;
   display: grid;
   place-content: center;
   gap: 0.1rem;
@@ -763,11 +836,11 @@ textarea {
 }
 
 .week-day-pill span {
-  font-size: 0.88rem;
+  font-size: 0.98rem;
 }
 
 .week-day-pill strong {
-  font-size: 1.12rem;
+  font-size: 1.34rem;
 }
 
 .calendar-cell.button-day {
@@ -784,7 +857,7 @@ textarea {
 }
 
 .time-colon {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--muted);
 }
@@ -798,7 +871,7 @@ textarea {
 
 .wheel-label {
   text-align: center;
-  font-size: 0.76rem;
+  font-size: 0.88rem;
   color: var(--muted);
   margin-bottom: 0.25rem;
 }
@@ -817,13 +890,13 @@ textarea {
 }
 
 .wheel-item {
-  min-height: 50px;
+  min-height: 58px;
   width: 100%;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
-  font-size: 1.1rem;
+  font-size: 1.26rem;
   scroll-snap-align: center;
   cursor: pointer;
 }
@@ -838,9 +911,31 @@ textarea {
   text-align: center;
   margin-top: 0.35rem;
   padding: 0.25rem 0.35rem 0.08rem;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   font-weight: 580;
   color: var(--muted);
+}
+
+.time-touch-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-top: 0.2rem;
+}
+
+.time-input-label {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.touch-time-input {
+  min-height: 70px;
+  font-size: 1.45rem;
+  font-weight: 620;
+  text-align: center;
+  border-radius: 16px;
+  letter-spacing: 0.02em;
 }
 
 .quick-chip-row {
@@ -860,15 +955,15 @@ textarea {
 }
 
 .quick-chip {
-  min-height: 38px;
-  padding: 0.3rem 0.78rem;
-  font-size: 0.82rem;
+  min-height: 46px;
+  padding: 0.4rem 0.95rem;
+  font-size: 1rem;
 }
 
 .tab-btn {
-  min-height: 36px;
-  padding: 0.3rem 0.72rem;
-  font-size: 0.82rem;
+  min-height: 46px;
+  padding: 0.4rem 0.9rem;
+  font-size: 1rem;
 }
 
 .tab-btn.add {
@@ -886,7 +981,7 @@ textarea {
 
 .modal-label {
   margin: 0 0 0.42rem;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .avatar-grid {
@@ -899,7 +994,7 @@ textarea {
   border: 1px solid color-mix(in srgb, var(--card-border) 72%, transparent);
   background: var(--surface-1);
   border-radius: 999px;
-  min-height: 56px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -947,13 +1042,14 @@ textarea {
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--card-border) 75%, transparent);
   padding: 0.7rem 0.78rem;
-  min-height: 46px;
+  min-height: 58px;
+  font-size: 1.05rem;
   background: var(--surface-1);
   backdrop-filter: blur(10px);
 }
 
 textarea {
-  min-height: 110px;
+  min-height: 160px;
   resize: vertical;
 }
 
@@ -974,12 +1070,12 @@ textarea:focus,
 .btn {
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
-  min-height: 48px;
-  padding: 0.66rem 1.05rem;
+  min-height: 58px;
+  padding: 0.78rem 1.25rem;
   background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 95%, white 5%), var(--primary));
   color: #ffffff;
   font-weight: 650;
-  font-size: 1rem;
+  font-size: 1.12rem;
   letter-spacing: -0.01em;
   cursor: pointer;
   touch-action: manipulation;
@@ -1003,31 +1099,31 @@ textarea:focus,
   color: color-mix(in srgb, var(--danger) 72%, var(--text));
   border-color: color-mix(in srgb, var(--danger) 34%, transparent);
   font-weight: 600;
-  min-height: 36px;
-  padding: 0.34rem 0.68rem;
-  font-size: 0.82rem;
+  min-height: 42px;
+  padding: 0.42rem 0.78rem;
+  font-size: 0.95rem;
   box-shadow: none;
 }
 
 .icon-delete-btn {
   border: 0;
   background: transparent;
-  min-height: 28px;
-  min-width: 28px;
+  min-height: 38px;
+  min-width: 38px;
   padding: 0;
-  font-size: 1.1rem;
+  font-size: 1.35rem;
 }
 
 .compact {
-  min-height: 40px;
-  padding: 0.48rem 0.78rem;
-  font-size: 0.9rem;
+  min-height: 48px;
+  padding: 0.58rem 0.95rem;
+  font-size: 1rem;
 }
 
 .header-mini-btn {
-  min-height: 34px;
-  padding: 0.33rem 0.65rem;
-  font-size: 0.8rem;
+  min-height: 42px;
+  padding: 0.46rem 0.9rem;
+  font-size: 0.95rem;
 }
 
 .inline-action {
@@ -1071,8 +1167,8 @@ textarea:focus,
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  min-height: 42px;
-  font-size: clamp(0.98rem, 1.36vw, 1.14rem);
+  min-height: 52px;
+  font-size: clamp(1.2rem, 1.8vw, 1.5rem);
 }
 
 .checkbox-row.grow {
@@ -1080,12 +1176,12 @@ textarea:focus,
 }
 
 .checkbox-row input[type='checkbox'] {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  min-height: 24px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
   padding: 0;
-  flex: 0 0 24px;
+  flex: 0 0 30px;
   border-radius: 50%;
   border: 2px solid color-mix(in srgb, var(--primary) 46%, transparent);
   background: var(--surface-1);
@@ -1103,12 +1199,12 @@ textarea:focus,
 .checkbox-row input[type='checkbox']:checked::after {
   content: '';
   position: absolute;
-  left: 7px;
-  top: 3px;
-  width: 5px;
-  height: 10px;
-  border-right: 2px solid #fff;
-  border-bottom: 2px solid #fff;
+  left: 9px;
+  top: 5px;
+  width: 7px;
+  height: 12px;
+  border-right: 3px solid #fff;
+  border-bottom: 3px solid #fff;
   transform: rotate(45deg);
 }
 
@@ -1153,8 +1249,8 @@ textarea:focus,
 }
 
 .dot {
-  width: 0.66rem;
-  height: 0.66rem;
+  width: 0.9rem;
+  height: 0.9rem;
   border-radius: 999px;
   border: 0;
   padding: 0;
@@ -1163,7 +1259,7 @@ textarea:focus,
 }
 
 .dot.active {
-  width: 1.4rem;
+  width: 1.9rem;
   border-radius: 999px;
   background: var(--primary);
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 25%, transparent);
@@ -1203,14 +1299,22 @@ textarea:focus,
 }
 
 @media (max-width: 760px) {
+  body {
+    font-size: clamp(16px, 3.8vw, 20px);
+  }
+
   .kiosk-shell,
   .app-shell {
-    padding: 0.85rem 0.45rem;
+    padding: 1rem 0.6rem;
   }
 
   .calendar-events-layout {
-    grid-template-columns: 1fr;
+    min-height: auto;
     gap: 1rem;
+  }
+
+  .events-top-card {
+    flex-basis: min(300px, 82vw);
   }
 
   .week-day-pill {
@@ -1264,4 +1368,17 @@ textarea:focus,
     transition-duration: 0ms !important;
     animation-duration: 0ms !important;
   }
+}
+
+*,
+*::before,
+*::after {
+  cursor: var(--tap-cursor) !important;
+}
+
+body.cursor-hidden,
+body.cursor-hidden *,
+body.cursor-hidden *::before,
+body.cursor-hidden *::after {
+  cursor: none !important;
 }

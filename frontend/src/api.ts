@@ -2,6 +2,13 @@ import type { CalendarEvent, GroceryItem, GroceryList, NoteItem, TodoItem, TodoL
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8787';
 const API_KEY = import.meta.env.VITE_API_KEY ?? 'ILoveNihal';
+const normalizedBase = API_BASE_URL.replace(/\/+$/, '');
+const baseWithApiStripped = normalizedBase.endsWith('/api') ? normalizedBase.slice(0, -4) : normalizedBase;
+
+const buildApiUrl = (path: string) => {
+  const normalizedPath = normalizedBase.endsWith('/api') && path.startsWith('/api/') ? path.slice(4) : path;
+  return `${normalizedBase}${normalizedPath}`;
+};
 
 const json = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const headers: Record<string, string> = {
@@ -12,7 +19,7 @@ const json = async <T>(path: string, init?: RequestInit): Promise<T> => {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     ...init,
     credentials: 'include',
     headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) },
@@ -27,7 +34,7 @@ const json = async <T>(path: string, init?: RequestInit): Promise<T> => {
 };
 
 export const api = {
-  baseUrl: API_BASE_URL,
+  baseUrl: normalizedBase,
   login: (username: string, password: string) =>
     json<{ id: number; username: string }>('/api/auth/login', {
       method: 'POST',
@@ -81,9 +88,9 @@ export const api = {
 };
 
 export const connectWs = (onEvent: (type: string) => void): WebSocket => {
-  const wsUrl = API_BASE_URL.startsWith('https://')
-    ? API_BASE_URL.replace('https://', 'wss://')
-    : API_BASE_URL.replace('http://', 'ws://');
+  const wsUrl = baseWithApiStripped.startsWith('https://')
+    ? baseWithApiStripped.replace('https://', 'wss://')
+    : baseWithApiStripped.replace('http://', 'ws://');
 
   const ws = new WebSocket(`${wsUrl}/ws?apiKey=${encodeURIComponent(API_KEY)}`);
   ws.onmessage = (event) => {

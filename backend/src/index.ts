@@ -17,7 +17,10 @@ const env = {
   jwtSecret: process.env.JWT_SECRET ?? 'replace-me',
   adminUsername: process.env.ADMIN_USERNAME ?? 'admin',
   adminPassword: process.env.ADMIN_PASSWORD ?? 'admin',
-  corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(','),
+  corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0),
   cookieSecure: (process.env.COOKIE_SECURE ?? 'false') === 'true',
 };
 

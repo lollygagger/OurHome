@@ -1,4 +1,4 @@
-import { ReactNode, TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PointerEvent, ReactNode, TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import GridLayout, { WidthProvider } from 'react-grid-layout';
 import { api, connectWs } from './api';
@@ -91,7 +91,10 @@ function KioskPage() {
   const weatherLat = Number(import.meta.env.VITE_WEATHER_LAT ?? 47.6376);
   const weatherLon = Number(import.meta.env.VITE_WEATHER_LON ?? -122.3561);
 
-  const touchStartX = useRef<number | null>(null);
+  const swipeStartX = useRef<number | null>(null);
+  const swipeStartY = useRef<number | null>(null);
+  const swipePointerId = useRef<number | null>(null);
+  const swipeHandled = useRef(false);
   const inactivityTimerRef = useRef<number | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
   const [isCustomizingOverview, setIsCustomizingOverview] = useState(false);
@@ -234,6 +237,44 @@ function KioskPage() {
     return () => ws.close();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!isEventModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsEventModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isEventModalOpen]);
+
+  useEffect(() => {
+    const root = document.body;
+    let hideTimer: number | null = null;
+
+    const scheduleHide = () => {
+      if (hideTimer) window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => {
+        root.classList.add('cursor-hidden');
+      }, 5000);
+    };
+
+    const showCursor = () => {
+      root.classList.remove('cursor-hidden');
+      scheduleHide();
+    };
+
+    const events: Array<keyof WindowEventMap> = ['pointermove', 'pointerdown', 'mousemove', 'mousedown', 'touchstart'];
+    showCursor();
+    events.forEach((eventName) => window.addEventListener(eventName, showCursor, { passive: true }));
+
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, showCursor));
+      if (hideTimer) window.clearTimeout(hideTimer);
+      root.classList.remove('cursor-hidden');
+    };
+  }, []);
+
   const openGrocery = grocery.filter((item) => !item.completed);
   const sortedGrocery = useMemo(
     () => [...grocery].sort((a, b) => Number(a.completed) - Number(b.completed)),
@@ -257,6 +298,21 @@ function KioskPage() {
     const start = new Date(event.start_time).getTime();
     return start >= nowTime && start <= nowTime + oneWeekMs;
   });
+  const upcomingTopEvents = useMemo(() => {
+    const seen = new Set<number>();
+    const merged: Array<CalendarEvent & { windowLabel: '24h' | '7d' }> = [];
+    upcomingDayEvents.forEach((event) => {
+      if (seen.has(event.id)) return;
+      seen.add(event.id);
+      merged.push({ ...event, windowLabel: '24h' });
+    });
+    upcomingWeekEvents.forEach((event) => {
+      if (seen.has(event.id)) return;
+      seen.add(event.id);
+      merged.push({ ...event, windowLabel: '7d' });
+    });
+    return merged.slice(0, 14);
+  }, [upcomingDayEvents, upcomingWeekEvents]);
   const monthStart = new Date(clock.getFullYear(), clock.getMonth(), 1);
   const monthEnd = new Date(clock.getFullYear(), clock.getMonth() + 1, 0);
   const firstWeekday = monthStart.getDay();
@@ -264,8 +320,6 @@ function KioskPage() {
   const eventDayKeys = new Set(events.map((event) => dateKey(new Date(event.start_time))));
   const pageLabels = ['Overview', 'Grocery', 'Todos', 'Events', 'Notes'];
   const pageCount = pageLabels.length;
-  const hourValues = useMemo(() => Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0')), []);
-  const minuteValues = useMemo(() => Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0')), []);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(eventWeekStart, index)), [eventWeekStart]);
   const modalMonthStart = new Date(eventModalMonthCursor.getFullYear(), eventModalMonthCursor.getMonth(), 1);
   const modalMonthEnd = new Date(eventModalMonthCursor.getFullYear(), eventModalMonthCursor.getMonth() + 1, 0);
@@ -301,22 +355,127 @@ function KioskPage() {
     };
   }, [resetInactivityTimer]);
 
-  const onTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    if (pageIndex === 0 && isCustomizingOverview) return;
-    touchStartX.current = event.touches[0]?.clientX ?? null;
+  const completeSwipe = useCallback(
+    (endX: number, endY: number) => {
+      if (swipeStartX.current === null || swipeStartY.current === null) return;
+      if (swipeHandled.current) return;
+
+      const deltaX = endX - swipeStartX.current;
+      const deltaY = endY - swipeStartY.current;
+      const horizontalThreshold = 22;
+      const maxVerticalDrift = 100;
+      const isHorizontalSwipe = Math.abs(deltaX) >= horizontalThreshold && Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (isHorizontalSwipe && Math.abs(deltaY) <= maxVerticalDrift) {
+        if (deltaX < 0) setPageIndex((current) => Math.min(current + 1, pageCount - 1));
+        if (deltaX > 0) setPageIndex((current) => Math.max(current - 1, 0));
+        swipeHandled.current = true;
+      }
+    },
+    [pageCount]
+  );
+
+  const clearSwipeState = () => {
+    swipeStartX.current = null;
+    swipeStartY.current = null;
+    swipePointerId.current = null;
+    swipeHandled.current = false;
   };
 
-  const onTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
-    if (pageIndex === 0 && isCustomizingOverview) return;
-    if (touchStartX.current === null) return;
-    const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX.current;
-    const deltaX = touchEndX - touchStartX.current;
-    const threshold = 55;
-
-    if (deltaX < -threshold) setPageIndex((current) => Math.min(current + 1, pageCount - 1));
-    if (deltaX > threshold) setPageIndex((current) => Math.max(current - 1, 0));
-    touchStartX.current = null;
+  const isInteractiveTarget = (target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(
+      target.closest(
+        'input, textarea, select, button, [contenteditable="true"], [role="button"], .react-resizable-handle'
+      )
+    );
   };
+
+  const onSwipePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (pageIndex === 0 && isCustomizingOverview) return;
+    if (isInteractiveTarget(event.target)) return;
+    if (!event.isPrimary) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    swipeStartX.current = event.clientX;
+    swipeStartY.current = event.clientY;
+    swipePointerId.current = event.pointerId;
+    swipeHandled.current = false;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId) === false) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const onSwipePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (swipePointerId.current !== event.pointerId) return;
+    if (swipeStartX.current === null || swipeStartY.current === null) return;
+
+    const deltaX = event.clientX - swipeStartX.current;
+    const deltaY = event.clientY - swipeStartY.current;
+    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      event.preventDefault();
+    }
+
+    if (!swipeHandled.current) {
+      completeSwipe(event.clientX, event.clientY);
+    }
+  };
+
+  const onSwipePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    if (pageIndex === 0 && isCustomizingOverview) return;
+    if (swipePointerId.current !== event.pointerId) return;
+    completeSwipe(event.clientX, event.clientY);
+    clearSwipeState();
+  };
+
+  const onSwipePointerCancel = (event: PointerEvent<HTMLDivElement>) => {
+    if (swipePointerId.current !== event.pointerId) return;
+    clearSwipeState();
+  };
+
+  const onSwipeTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (pageIndex === 0 && isCustomizingOverview) return;
+    if (isInteractiveTarget(event.target)) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    swipeStartX.current = touch.clientX;
+    swipeStartY.current = touch.clientY;
+    swipeHandled.current = false;
+  };
+
+  const onSwipeTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (pageIndex === 0 && isCustomizingOverview) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    completeSwipe(touch.clientX, touch.clientY);
+    clearSwipeState();
+  };
+
+  const openEventModalForDate = useCallback(
+    (date: Date) => {
+      const existingTime = kioskEventTime || `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+      const [hour, minute] = existingTime.split(':');
+      setEventHour(hour ?? '08');
+      setEventMinute(minute ?? '00');
+      setEventModalMonthCursor(new Date(date.getFullYear(), date.getMonth(), 1));
+      setEventWeekStart(startOfWeek(date));
+      setShowFullCalendar(false);
+      setKioskEventDate(toInputDate(date));
+      setIsEventModalOpen(true);
+    },
+    [kioskEventTime]
+  );
+
+  const shiftEventMinutes = useCallback(
+    (delta: number) => {
+      const base = new Date(`1970-01-01T${eventHour}:${eventMinute}:00`);
+      if (Number.isNaN(base.getTime())) return;
+      base.setMinutes(base.getMinutes() + delta);
+      setEventHour(String(base.getHours()).padStart(2, '0'));
+      setEventMinute(String(base.getMinutes()).padStart(2, '0'));
+    },
+    [eventHour, eventMinute]
+  );
 
   return (
     <main className="kiosk-shell">
@@ -351,14 +510,22 @@ function KioskPage() {
       </header>
 
       <div className="kiosk-content">
-        <section className="swipe-shell" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <section
+          className="swipe-shell"
+          onPointerDownCapture={onSwipePointerDown}
+          onPointerMoveCapture={onSwipePointerMove}
+          onPointerUpCapture={onSwipePointerUp}
+          onPointerCancelCapture={onSwipePointerCancel}
+          onTouchStartCapture={onSwipeTouchStart}
+          onTouchEndCapture={onSwipeTouchEnd}
+        >
           <div className="swipe-track" style={{ transform: `translateX(-${pageIndex * 100}%)` }}>
           <section className="swipe-page">
             <ResponsiveGridLayout
               className={`overview-grid ${isCustomizingOverview ? 'editing' : ''}`}
               layout={overviewLayout}
               cols={4}
-              rowHeight={92}
+              rowHeight={118}
               margin={[10, 10]}
               containerPadding={[0, 0]}
               isDraggable={isCustomizingOverview}
@@ -705,9 +872,57 @@ function KioskPage() {
             <div className="widget-page">
               <Panel title="Events" icon="📅">
                 <div className="calendar-events-layout">
-                  <section className="calendar-shell">
+                  <section className="events-top-strip">
+                    <div className="events-top-header">
+                      <h3>Upcoming</h3>
+                      <span className="muted">Next 7 days</span>
+                    </div>
+                    {upcomingTopEvents.length === 0 ? (
+                      <p className="muted">No events in the next week.</p>
+                    ) : (
+                      <div className="events-top-scroll">
+                        {upcomingTopEvents.map((event) => (
+                          <article key={`top-${event.id}`} className="events-top-card">
+                            <div className="events-top-meta">
+                              <span className="events-window-pill">{event.windowLabel}</span>
+                              <button
+                                className="btn btn-danger icon-delete-btn"
+                                type="button"
+                                aria-label="Delete event"
+                                title="Delete event"
+                                onClick={() => api.deleteEvent(event.id).then(() => refresh())}
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <p className="events-top-title">{event.title}</p>
+                            <p className="muted events-top-time">{new Date(event.start_time).toLocaleString()}</p>
+                            {event.location ? <p className="muted events-top-location">📍 {event.location}</p> : null}
+                            {event.attendees?.length ? (
+                              <span className="attendee-avatars">
+                                {event.attendees.map((name) => (
+                                  <span key={`top-attendee-${event.id}-${name}`} className="tiny-avatar" title={name} aria-label={name}>
+                                    {HOUSEHOLD_AVATARS[name] ?? '👤'}
+                                  </span>
+                                ))}
+                              </span>
+                            ) : null}
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="calendar-shell calendar-shell-large">
                     <header className="calendar-header">
                       <strong>{monthStart.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong>
+                      <button
+                        className="btn"
+                        type="button"
+                        onClick={() => openEventModalForDate(kioskEventDate ? new Date(`${kioskEventDate}T00:00:00`) : new Date())}
+                      >
+                        Add Event
+                      </button>
                     </header>
                     <div className="calendar-weekdays">
                       {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
@@ -725,105 +940,20 @@ function KioskPage() {
                         const hasEvent = eventDayKeys.has(key);
                         const isToday = day === clock.getDate();
                         return (
-                          <span key={key} className={`calendar-cell ${hasEvent ? 'has-event' : ''} ${isToday ? 'today' : ''}`}>
+                          <button
+                            key={key}
+                            type="button"
+                            className={`calendar-cell button-day ${hasEvent ? 'has-event' : ''} ${isToday ? 'today' : ''}`}
+                            onClick={() => openEventModalForDate(dayDate)}
+                            aria-label={`Add event for ${dayDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}`}
+                            title={`Add event on ${dayDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}`}
+                          >
                             {day}
-                          </span>
+                          </button>
                         );
                       })}
                     </div>
-                    <div className="calendar-action-row center">
-                      <button
-                        className="btn"
-                        type="button"
-                        onClick={() => {
-                          const baseDate = kioskEventDate ? new Date(`${kioskEventDate}T00:00:00`) : new Date();
-                          const existingTime = kioskEventTime || `${String(baseDate.getHours()).padStart(2, '0')}:${String(baseDate.getMinutes()).padStart(2, '0')}`;
-                          const [hour, minute] = existingTime.split(':');
-                          setEventHour(hour ?? '08');
-                          setEventMinute(minute ?? '00');
-                          setEventModalMonthCursor(new Date(baseDate.getFullYear(), baseDate.getMonth(), 1));
-                          setEventWeekStart(startOfWeek(baseDate));
-                          setShowFullCalendar(false);
-                          setKioskEventDate(toInputDate(baseDate));
-                          setIsEventModalOpen(true);
-                        }}
-                      >
-                        Add Event
-                      </button>
-                    </div>
                   </section>
-
-                  <div className="events-right-column">
-                    <section className="event-preview-group">
-                      <h3>Upcoming 24 Hours</h3>
-                      {upcomingDayEvents.length === 0 ? (
-                        <p className="muted">No events in the next day.</p>
-                      ) : (
-                        upcomingDayEvents.slice(0, 5).map((event) => (
-                          <div key={`day-${event.id}`} className="event-row">
-                            <p className="line-item">
-                              <strong>{event.title}</strong>
-                              <span>{new Date(event.start_time).toLocaleString()}</span>
-                              {event.location ? <span className="muted">📍 {event.location}</span> : null}
-                              {event.attendees?.length ? (
-                                <span className="attendee-avatars">
-                                  {event.attendees.map((name) => (
-                                    <span key={`day-attendee-${event.id}-${name}`} className="tiny-avatar" title={name} aria-label={name}>
-                                      {HOUSEHOLD_AVATARS[name] ?? '👤'}
-                                    </span>
-                                  ))}
-                                </span>
-                              ) : null}
-                            </p>
-                            <button
-                              className="btn btn-danger icon-delete-btn"
-                              type="button"
-                              aria-label="Delete event"
-                              title="Delete event"
-                              onClick={() => api.deleteEvent(event.id).then(() => refresh())}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </section>
-
-                    <section className="event-preview-group">
-                      <h3>Upcoming 7 Days</h3>
-                      {upcomingWeekEvents.length === 0 ? (
-                        <p className="muted">No events this week.</p>
-                      ) : (
-                        upcomingWeekEvents.slice(0, 10).map((event) => (
-                          <div key={`week-${event.id}`} className="event-row">
-                            <p className="line-item">
-                              <strong>{event.title}</strong>
-                              <span>{new Date(event.start_time).toLocaleString()}</span>
-                              {event.location ? <span className="muted">📍 {event.location}</span> : null}
-                              {event.attendees?.length ? (
-                                <span className="attendee-avatars">
-                                  {event.attendees.map((name) => (
-                                    <span key={`week-attendee-${event.id}-${name}`} className="tiny-avatar" title={name} aria-label={name}>
-                                      {HOUSEHOLD_AVATARS[name] ?? '👤'}
-                                    </span>
-                                  ))}
-                                </span>
-                              ) : null}
-                            </p>
-                            <button
-                              className="btn btn-danger icon-delete-btn"
-                              type="button"
-                              aria-label="Delete event"
-                              title="Delete event"
-                              onClick={() => api.deleteEvent(event.id).then(() => refresh())}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </section>
-                  </div>
                 </div>
               </Panel>
             </div>
@@ -918,7 +1048,17 @@ function KioskPage() {
       </div>
 
       {isEventModalOpen ? (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Add calendar event">
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add calendar event"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsEventModalOpen(false);
+            }
+          }}
+        >
           <div className="modal-card">
             <h2><span className="icon">📅</span>Add Event</h2>
             <form
@@ -1054,11 +1194,29 @@ function KioskPage() {
                 </div>
                 <div className="datetime-field">
                   <span className="field-head"><span className="icon">🕒</span>Time</span>
-                  <div className="time-wheel-wrap">
-                    <TimeWheel label="Hour" options={hourValues} value={eventHour} onChange={setEventHour} />
-                    <div className="time-colon">:</div>
-                    <TimeWheel label="Min" options={minuteValues} value={eventMinute} onChange={setEventMinute} />
+                  <div className="time-touch-controls">
+                    <button type="button" className="btn btn-muted compact" onClick={() => shiftEventMinutes(-15)}>
+                      -15 min
+                    </button>
+                    <button type="button" className="btn btn-muted compact" onClick={() => shiftEventMinutes(15)}>
+                      +15 min
+                    </button>
                   </div>
+                  <label className="time-input-label">
+                    <span className="muted">Tap to set time</span>
+                    <input
+                      className="touch-time-input"
+                      type="time"
+                      step={300}
+                      value={`${eventHour}:${eventMinute}`}
+                      onChange={(event) => {
+                        const [hour, minute] = event.target.value.split(':');
+                        if (!hour || !minute) return;
+                        setEventHour(hour);
+                        setEventMinute(minute);
+                      }}
+                    />
+                  </label>
                   <p className="time-preview">Selected: {formatTimeLabel(`${eventHour}:${eventMinute}`)}</p>
                   <div className="quick-chip-row">
                     {[
@@ -1153,56 +1311,6 @@ function formatTimeLabel(time: string) {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-function TimeWheel({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  const ITEM_HEIGHT = 44;
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const valueIndex = Math.max(0, options.indexOf(value));
-
-  useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    list.scrollTo({ top: valueIndex * ITEM_HEIGHT, behavior: 'auto' });
-  }, [valueIndex]);
-
-  return (
-    <div className="time-wheel">
-      <p className="wheel-label">{label}</p>
-      <div
-        ref={listRef}
-        className="wheel-list"
-        onScroll={(event) => {
-          const target = event.currentTarget;
-          const index = Math.round(target.scrollTop / ITEM_HEIGHT);
-          const clamped = Math.max(0, Math.min(index, options.length - 1));
-          const next = options[clamped];
-          if (next !== value) onChange(next);
-        }}
-      >
-        {options.map((option) => (
-          <button
-            key={`${label}-${option}`}
-            type="button"
-            className={`wheel-item ${option === value ? 'active' : ''}`}
-            onClick={() => onChange(option)}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function Panel({ title, icon, children }: { title: string; icon?: string; children: ReactNode }) {
