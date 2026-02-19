@@ -249,6 +249,8 @@ await app.register(websocket);
 
 app.addHook('onRequest', async (request, reply) => {
   if (!request.url.startsWith('/api/')) return;
+  // Let CORS preflight requests pass through without API-key auth.
+  if (request.method === 'OPTIONS') return;
   const key = request.headers['x-api-key'];
   const apiKey = Array.isArray(key) ? key[0] : key;
   if (apiKey !== env.apiKey) {
