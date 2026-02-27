@@ -2,6 +2,8 @@ import type { CalendarEvent, GroceryItem, GroceryList, NoteItem, TodoItem, TodoL
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8787';
 const API_KEY = import.meta.env.VITE_API_KEY ?? 'ILoveNihal';
+const CF_ACCESS_CLIENT_ID = import.meta.env.VITE_CF_ACCESS_CLIENT_ID ?? '';
+const CF_ACCESS_CLIENT_SECRET = import.meta.env.VITE_CF_ACCESS_CLIENT_SECRET ?? '';
 const normalizedBase = API_BASE_URL.replace(/\/+$/, '');
 const baseWithApiStripped = normalizedBase.endsWith('/api') ? normalizedBase.slice(0, -4) : normalizedBase;
 
@@ -14,6 +16,8 @@ const json = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const headers: Record<string, string> = {
     'x-api-key': API_KEY,
   };
+  if (CF_ACCESS_CLIENT_ID) headers['CF-Access-Client-Id'] = CF_ACCESS_CLIENT_ID;
+  if (CF_ACCESS_CLIENT_SECRET) headers['CF-Access-Client-Secret'] = CF_ACCESS_CLIENT_SECRET;
   const hasJsonBody = typeof init?.body === 'string' && init.body.length > 0;
   if (hasJsonBody) {
     headers['Content-Type'] = 'application/json';

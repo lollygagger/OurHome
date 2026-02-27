@@ -127,6 +127,15 @@ function KioskPage() {
   const [sunriseAt, setSunriseAt] = useState<Date | null>(null);
   const [sunsetAt, setSunsetAt] = useState<Date | null>(null);
   const [forcedTimeTheme, setForcedTimeTheme] = useState<'dawn' | 'morning' | 'afternoon' | 'evening' | 'night' | null>(null);
+  const [isDesktopKeyboardMode, setIsDesktopKeyboardMode] = useState(() => window.innerWidth >= 900);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isKeyboardShifted, setIsKeyboardShifted] = useState(false);
+  const activeTextFieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const isLowPerformanceDevice = useMemo(() => {
+    const coreCount = navigator.hardwareConcurrency ?? 4;
+    const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
+    return coreCount <= 4 || memory <= 4;
+  }, []);
   const [weather, setWeather] = useState<{
     temperature: number;
     apparentTemperature: number;
@@ -171,13 +180,23 @@ function KioskPage() {
 
   useEffect(() => {
     void refresh();
-    const id = window.setInterval(() => setClock(new Date()), 1000);
+    const id = window.setInterval(() => setClock(new Date()), 30 * 1000);
     return () => window.clearInterval(id);
   }, [refresh]);
 
   useEffect(() => {
+    const onResize = () => setIsDesktopKeyboardMode(window.innerWidth >= 900);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
     document.documentElement.setAttribute('data-time-theme', effectiveTimeTheme);
   }, [effectiveTimeTheme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-performance-mode', isLowPerformanceDevice ? 'on' : 'off');
+  }, [isLowPerformanceDevice]);
 
   useEffect(() => {
     const refreshWeather = async () => {
@@ -274,6 +293,103 @@ function KioskPage() {
       root.classList.remove('cursor-hidden');
     };
   }, []);
+
+  useEffect(() => {
+    if (!isDesktopKeyboardMode) {
+      setIsKeyboardVisible(false);
+      activeTextFieldRef.current = null;
+      return;
+    }
+
+    const isSupportedTextField = (node: EventTarget | null): node is HTMLInputElement | HTMLTextAreaElement => {
+      if (!(node instanceof HTMLElement)) return false;
+      if (node instanceof HTMLTextAreaElement) return true;
+      if (node instanceof HTMLInputElement) {
+        const supportedTypes = new Set(['', 'text', 'search', 'email', 'url', 'tel', 'password']);
+        return supportedTypes.has(node.type);
+      }
+      return false;
+    };
+
+    const onFocusIn = (event: FocusEvent) => {
+      if (!isSupportedTextField(event.target)) return;
+      activeTextFieldRef.current = event.target;
+      setIsKeyboardVisible(true);
+    };
+
+    const onFocusOut = () => {
+      window.setTimeout(() => {
+        const active = document.activeElement;
+        if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+        setIsKeyboardVisible(false);
+        activeTextFieldRef.current = null;
+      }, 0);
+    };
+
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, [isDesktopKeyboardMode]);
+
+  const applyKeyboardInput = useCallback(
+    (action: string) => {
+      const field = activeTextFieldRef.current;
+      if (!field) return;
+
+      const start = field.selectionStart ?? field.value.length;
+      const end = field.selectionEnd ?? start;
+      const emitInput = () => field.dispatchEvent(new Event('input', { bubbles: true }));
+
+      if (action === 'close') {
+        field.blur();
+        setIsKeyboardVisible(false);
+        return;
+      }
+
+      if (action === 'backspace') {
+        if (start !== end) {
+          field.setRangeText('', start, end, 'end');
+        } else if (start > 0) {
+          field.setRangeText('', start - 1, start, 'end');
+        }
+        emitInput();
+        field.focus();
+        return;
+      }
+
+      if (action === 'space') {
+        field.setRangeText(' ', start, end, 'end');
+        emitInput();
+        field.focus();
+        if (isKeyboardShifted) setIsKeyboardShifted(false);
+        return;
+      }
+
+      if (action === 'enter') {
+        if (field instanceof HTMLTextAreaElement) {
+          field.setRangeText('\n', start, end, 'end');
+          emitInput();
+          field.focus();
+        }
+        return;
+      }
+
+      if (action === 'shift') {
+        setIsKeyboardShifted((value) => !value);
+        return;
+      }
+
+      const nextChar = isKeyboardShifted ? action.toUpperCase() : action;
+      field.setRangeText(nextChar, start, end, 'end');
+      emitInput();
+      field.focus();
+      if (isKeyboardShifted) setIsKeyboardShifted(false);
+    },
+    [isKeyboardShifted]
+  );
 
   const openGrocery = grocery.filter((item) => !item.completed);
   const sortedGrocery = useMemo(
@@ -1281,6 +1397,42 @@ function KioskPage() {
               </div>
             </form>
           </div>
+        </div>
+      ) : null}
+      {isDesktopKeyboardMode && isKeyboardVisible ? (
+        <div className="onscreen-keyboard" role="toolbar" aria-label="On-screen keyboard">
+          {[
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'backspace'],
+            ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+            ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'enter'],
+            ['shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'space', 'close'],
+          ].map((row, rowIndex) => (
+            <div key={`keyboard-row-${rowIndex}`} className={`keyboard-row keyboard-row-${rowIndex}`}>
+              {row.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`keyboard-key ${key === 'space' ? 'space' : ''} ${key === 'shift' && isKeyboardShifted ? 'active' : ''}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => applyKeyboardInput(key)}
+                >
+                  {key === 'backspace'
+                    ? '⌫'
+                    : key === 'enter'
+                      ? '⏎'
+                      : key === 'shift'
+                        ? '⇧'
+                        : key === 'close'
+                          ? 'Done'
+                          : key === 'space'
+                            ? 'Space'
+                            : isKeyboardShifted
+                              ? key.toUpperCase()
+                              : key}
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
       ) : null}
       {shouldShowInactiveOverlay ? <div className="inactive-dim-overlay" aria-hidden="true" /> : null}

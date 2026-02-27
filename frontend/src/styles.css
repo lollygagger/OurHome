@@ -156,6 +156,41 @@
   --sun-opacity: 0;
 }
 
+:root[data-performance-mode='on'] {
+  --card-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+:root[data-performance-mode='on'] body {
+  background-image:
+    linear-gradient(180deg, var(--scene-dim-overlay), var(--scene-dim-overlay)),
+    linear-gradient(180deg, var(--bg-base-top) 0%, var(--bg-base-bottom) 100%);
+  transition: none;
+}
+
+:root[data-performance-mode='on'] body::before,
+:root[data-performance-mode='on'] body::after {
+  transition: none;
+}
+
+:root[data-performance-mode='on'] .hero-card,
+:root[data-performance-mode='on'] .panel,
+:root[data-performance-mode='on'] .card,
+:root[data-performance-mode='on'] .calendar-shell,
+:root[data-performance-mode='on'] .modal-card,
+:root[data-performance-mode='on'] .datetime-field,
+:root[data-performance-mode='on'] .picker-shell,
+:root[data-performance-mode='on'] .time-wheel,
+:root[data-performance-mode='on'] .onscreen-keyboard,
+:root[data-performance-mode='on'] .chip-link,
+:root[data-performance-mode='on'] input,
+:root[data-performance-mode='on'] textarea {
+  backdrop-filter: none !important;
+}
+
+:root[data-performance-mode='on'] .swipe-track {
+  transition: transform 180ms ease-out;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1273,6 +1308,63 @@ textarea:focus,
   z-index: 120;
 }
 
+.onscreen-keyboard {
+  position: fixed;
+  left: 50%;
+  bottom: 0.65rem;
+  transform: translateX(-50%);
+  width: min(980px, calc(100vw - 1.4rem));
+  padding: 0.55rem;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  backdrop-filter: blur(20px) saturate(145%);
+  box-shadow: 0 18px 40px rgba(10, 16, 29, 0.22);
+  z-index: 80;
+}
+
+.keyboard-row {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 0.48rem;
+  margin-top: 0.36rem;
+}
+
+.keyboard-row:first-child {
+  margin-top: 0;
+}
+
+.keyboard-row-1 {
+  padding-inline: 1.5rem;
+}
+
+.keyboard-row-2 {
+  padding-inline: 2.8rem;
+}
+
+.keyboard-row-3 {
+  padding-inline: 1.2rem;
+}
+
+.keyboard-key {
+  min-height: 52px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 75%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 90%, transparent);
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 620;
+}
+
+.keyboard-key.active {
+  background: color-mix(in srgb, var(--primary) 20%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.keyboard-key.space {
+  grid-column: span 2;
+}
+
 @media (hover: hover) {
   .btn:hover,
   .tab-btn:hover,
@@ -1351,6 +1443,10 @@ textarea:focus,
 
   .theme-debug-chips {
     justify-content: center;
+  }
+
+  .onscreen-keyboard {
+    display: none;
   }
 }
 
