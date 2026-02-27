@@ -284,7 +284,7 @@ textarea,
   z-index: 1;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 1.55rem 1.2rem;
+  padding: 1.2rem 0.95rem;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -309,8 +309,8 @@ textarea,
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   grid-template-areas: 'date center weather';
   align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
+  gap: 0.2rem;
+  margin-bottom: 0.35rem;
 }
 
 .title-block {
@@ -377,7 +377,7 @@ textarea,
 }
 
 .swipe-shell {
-  margin-top: 0.95rem;
+  margin-top: 0.5rem;
   width: 100%;
   overflow: hidden;
   touch-action: pan-y;
@@ -395,8 +395,8 @@ textarea,
 }
 
 .widget-page {
-  margin-top: 0.45rem;
-  min-height: clamp(82vh, calc(100vh - 9rem), 94vh);
+  margin-top: 0.3rem;
+  min-height: clamp(74vh, calc(100vh - 12.2rem), 88vh);
   display: flex;
 }
 
@@ -526,7 +526,7 @@ textarea {
 }
 
 .kiosk-footer {
-  margin-top: 1rem;
+  margin-top: 0.55rem;
   display: grid;
   justify-items: end;
   gap: 0.45rem;
@@ -609,7 +609,7 @@ textarea {
 
 .events-top-header h3 {
   margin: 0;
-  font-size: 1.22rem;
+  font-size: 1.45rem;
 }
 
 .events-top-scroll {
@@ -651,7 +651,7 @@ textarea {
 }
 
 .events-top-title {
-  font-size: 1.02rem;
+  font-size: 1.24rem;
   font-weight: 620;
   line-height: 1.25;
 }
@@ -659,7 +659,7 @@ textarea {
 .events-top-time,
 .events-top-location {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 1.02rem;
   line-height: 1.2;
 }
 
@@ -717,14 +717,17 @@ textarea {
 
 .calendar-cell {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 64px;
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 112px;
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--card-border) 72%, transparent);
   background: var(--surface-1);
-  font-size: clamp(1.5rem, 2.4vw, 2.05rem);
+  font-size: 1rem;
   font-weight: 610;
+  padding: 0.35rem 0.42rem;
+  text-align: left;
+  overflow: hidden;
 }
 
 .calendar-cell.empty {
@@ -743,6 +746,53 @@ textarea {
   background: color-mix(in srgb, var(--primary) 18%, var(--surface-1));
   border-color: color-mix(in srgb, var(--primary) 54%, transparent);
   color: color-mix(in srgb, var(--primary) 50%, var(--text));
+}
+
+.calendar-day-content {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.1rem;
+  width: 100%;
+  min-height: 100%;
+}
+
+.calendar-day-number {
+  display: block;
+  align-self: start;
+  justify-self: center;
+  text-align: center;
+  font-size: clamp(1.7rem, 2.8vw, 2.35rem);
+  font-weight: 680;
+  line-height: 1;
+}
+
+.calendar-day-events {
+  display: grid;
+  align-content: start;
+  gap: 0.16rem;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.calendar-day-chip {
+  display: block;
+  width: 100%;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+.calendar-day-more {
+  font-size: 0.7rem;
+  color: var(--muted);
+  padding-left: 0.16rem;
 }
 
 .attendee-avatars {
@@ -1275,12 +1325,12 @@ textarea:focus,
 }
 
 .swipe-indicators.overview-gap {
-  margin-top: 0.2rem;
-  transform: translateY(-1rem);
+  margin-top: 0;
+  transform: translateY(calc(-1.45rem - 10px));
 }
 
 .swipe-indicators.detail-gap {
-  margin-top: 1rem;
+  margin-top: 0.55rem;
 }
 
 .dot {

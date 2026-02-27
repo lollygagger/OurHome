@@ -6,6 +6,7 @@ import type { CalendarEvent, GroceryItem, GroceryList, NoteItem, TodoItem, TodoL
 
 const ResponsiveGridLayout = WidthProvider(GridLayout);
 const OVERVIEW_LAYOUT_STORAGE_KEY = 'ourhome.overview.layout.v1';
+const SHOW_TIME_THEME_TOGGLES = (import.meta.env.VITE_SHOW_TIME_THEME_TOGGLES ?? '').toLowerCase() === 'true';
 type GridLayoutItem = {
   i: string;
   x: number;
@@ -433,7 +434,17 @@ function KioskPage() {
   const monthEnd = new Date(clock.getFullYear(), clock.getMonth() + 1, 0);
   const firstWeekday = monthStart.getDay();
   const totalDays = monthEnd.getDate();
-  const eventDayKeys = new Set(events.map((event) => dateKey(new Date(event.start_time))));
+  const eventsByDayKey = useMemo(() => {
+    const byDay = new Map<string, CalendarEvent[]>();
+    events.forEach((event) => {
+      const key = dateKey(new Date(event.start_time));
+      const current = byDay.get(key) ?? [];
+      current.push(event);
+      byDay.set(key, current);
+    });
+    return byDay;
+  }, [events]);
+  const eventDayKeys = useMemo(() => new Set(eventsByDayKey.keys()), [eventsByDayKey]);
   const pageLabels = ['Overview', 'Grocery', 'Todos', 'Events', 'Notes'];
   const pageCount = pageLabels.length;
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(eventWeekStart, index)), [eventWeekStart]);
@@ -1054,6 +1065,7 @@ function KioskPage() {
                         const dayDate = new Date(clock.getFullYear(), clock.getMonth(), day);
                         const key = dateKey(dayDate);
                         const hasEvent = eventDayKeys.has(key);
+                        const dayEvents = eventsByDayKey.get(key) ?? [];
                         const isToday = day === clock.getDate();
                         return (
                           <button
@@ -1064,7 +1076,21 @@ function KioskPage() {
                             aria-label={`Add event for ${dayDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}`}
                             title={`Add event on ${dayDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}`}
                           >
-                            {day}
+                            <span className="calendar-day-content">
+                              <strong className="calendar-day-number">{day}</strong>
+                              {dayEvents.length ? (
+                                <span className="calendar-day-events">
+                                  {dayEvents.slice(0, 2).map((event) => (
+                                    <span key={`calendar-day-${key}-${event.id}`} className="calendar-day-chip">
+                                      {event.title}
+                                    </span>
+                                  ))}
+                                  {dayEvents.length > 2 ? (
+                                    <span className="calendar-day-more">+{dayEvents.length - 2} more</span>
+                                  ) : null}
+                                </span>
+                              ) : null}
+                            </span>
                           </button>
                         );
                       })}
@@ -1137,29 +1163,30 @@ function KioskPage() {
         </div>
 
         <footer className="kiosk-footer">
-          <div className="theme-debug-control">
-            <span className="muted">Preview theme</span>
-            <div className="theme-debug-chips">
-              <button
-                type="button"
-                className={`quick-chip ${forcedTimeTheme === null ? 'selected' : ''}`}
-                onClick={() => setForcedTimeTheme(null)}
-              >
-                Auto
-              </button>
-              {(['dawn', 'morning', 'afternoon', 'evening', 'night'] as const).map((theme) => (
+          {SHOW_TIME_THEME_TOGGLES ? (
+            <div className="theme-debug-control">
+              <span className="muted">Preview theme</span>
+              <div className="theme-debug-chips">
                 <button
-                  key={`theme-preview-${theme}`}
                   type="button"
-                  className={`quick-chip ${forcedTimeTheme === theme ? 'selected' : ''}`}
-                  onClick={() => setForcedTimeTheme(theme)}
+                  className={`quick-chip ${forcedTimeTheme === null ? 'selected' : ''}`}
+                  onClick={() => setForcedTimeTheme(null)}
                 >
-                  {theme[0].toUpperCase() + theme.slice(1)}
+                  Auto
                 </button>
-              ))}
+                {(['dawn', 'morning', 'afternoon', 'evening', 'night'] as const).map((theme) => (
+                  <button
+                    key={`theme-preview-${theme}`}
+                    type="button"
+                    className={`quick-chip ${forcedTimeTheme === theme ? 'selected' : ''}`}
+                    onClick={() => setForcedTimeTheme(theme)}
+                  >
+                    {theme[0].toUpperCase() + theme.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <span className="muted">Edit directly on screen</span>
+          ) : null}
         </footer>
       </div>
 
