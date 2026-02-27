@@ -11,5 +11,8 @@
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
     "build": "npm run build -w backend && npm run build -w frontend"
+  },
+  "devDependencies": {
+    "serve": "^14.2.5"
   }
 }

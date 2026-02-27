@@ -4,6 +4,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8787
 const API_KEY = import.meta.env.VITE_API_KEY ?? 'ILoveNihal';
 const CF_ACCESS_CLIENT_ID = import.meta.env.VITE_CF_ACCESS_CLIENT_ID ?? '';
 const CF_ACCESS_CLIENT_SECRET = import.meta.env.VITE_CF_ACCESS_CLIENT_SECRET ?? '';
+const DISABLE_WS = (import.meta.env.VITE_DISABLE_WS ?? '').toLowerCase() === 'true';
+const FORCE_WS = (import.meta.env.VITE_FORCE_WS ?? '').toLowerCase() === 'true';
 const normalizedBase = API_BASE_URL.replace(/\/+$/, '');
 const baseWithApiStripped = normalizedBase.endsWith('/api') ? normalizedBase.slice(0, -4) : normalizedBase;
 
@@ -92,11 +94,24 @@ export const api = {
 };
 
 export const connectWs = (onEvent: (type: string) => void): WebSocket => {
-  const wsUrl = baseWithApiStripped.startsWith('https://')
-    ? baseWithApiStripped.replace('https://', 'wss://')
-    : baseWithApiStripped.replace('http://', 'ws://');
+  const localhostDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const hasCfServiceToken = Boolean(CF_ACCESS_CLIENT_ID && CF_ACCESS_CLIENT_SECRET);
+  const shouldDisableWs = DISABLE_WS || (!FORCE_WS && localhostDev && hasCfServiceToken);
 
-  const ws = new WebSocket(`${wsUrl}/ws?apiKey=${encodeURIComponent(API_KEY)}`);
+  if (shouldDisableWs) {
+    return { close: () => undefined } as unknown as WebSocket;
+  }
+
+  const wsBase = baseWithApiStripped.length
+    ? baseWithApiStripped.startsWith('https://')
+      ? baseWithApiStripped.replace('https://', 'wss://')
+      : baseWithApiStripped.replace('http://', 'ws://')
+    : window.location.origin.replace(/^http/, 'ws');
+
+  const ws = new WebSocket(`${wsBase}/ws?apiKey=${encodeURIComponent(API_KEY)}`);
+  ws.onerror = () => {
+    // Keep websocket failures quiet in kiosk/dev environments.
+  };
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data) as { type?: string };

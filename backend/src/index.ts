@@ -342,11 +342,16 @@ app.get('/api/grocery/lists', async () => {
 app.post('/api/grocery/lists', async (request, reply) => {
   const parsed = z.object({ name: z.string().min(1).max(120) }).safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid payload' });
+  const normalizedName = parsed.data.name.trim();
+  const existing = db
+    .prepare('SELECT id, name, created_at, updated_at FROM grocery_lists WHERE name = ? COLLATE NOCASE LIMIT 1')
+    .get(normalizedName) as { id: number; name: string; created_at: string; updated_at: string } | undefined;
+  if (existing) return existing;
   const ts = now();
   try {
-    const result = db.prepare('INSERT INTO grocery_lists (name, created_at, updated_at) VALUES (?, ?, ?)').run(parsed.data.name.trim(), ts, ts);
+    const result = db.prepare('INSERT INTO grocery_lists (name, created_at, updated_at) VALUES (?, ?, ?)').run(normalizedName, ts, ts);
     broadcast('grocery.updated');
-    return reply.code(201).send({ id: result.lastInsertRowid, name: parsed.data.name.trim(), created_at: ts, updated_at: ts });
+    return reply.code(201).send({ id: result.lastInsertRowid, name: normalizedName, created_at: ts, updated_at: ts });
   } catch {
     return reply.code(409).send({ error: 'List name already exists' });
   }
@@ -471,11 +476,16 @@ app.get('/api/todos/lists', async () => {
 app.post('/api/todos/lists', async (request, reply) => {
   const parsed = z.object({ name: z.string().min(1).max(120) }).safeParse(request.body);
   if (!parsed.success) return reply.code(400).send({ error: 'Invalid payload' });
+  const normalizedName = parsed.data.name.trim();
+  const existing = db
+    .prepare('SELECT id, name, created_at, updated_at FROM todo_lists WHERE name = ? COLLATE NOCASE LIMIT 1')
+    .get(normalizedName) as { id: number; name: string; created_at: string; updated_at: string } | undefined;
+  if (existing) return existing;
   const ts = now();
   try {
-    const result = db.prepare('INSERT INTO todo_lists (name, created_at, updated_at) VALUES (?, ?, ?)').run(parsed.data.name.trim(), ts, ts);
+    const result = db.prepare('INSERT INTO todo_lists (name, created_at, updated_at) VALUES (?, ?, ?)').run(normalizedName, ts, ts);
     broadcast('todos.updated');
-    return reply.code(201).send({ id: result.lastInsertRowid, name: parsed.data.name.trim(), created_at: ts, updated_at: ts });
+    return reply.code(201).send({ id: result.lastInsertRowid, name: normalizedName, created_at: ts, updated_at: ts });
   } catch {
     return reply.code(409).send({ error: 'List name already exists' });
   }
