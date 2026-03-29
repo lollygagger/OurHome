@@ -6,6 +6,7 @@ import type { CalendarEvent, GroceryItem, GroceryList, NoteItem, TodoItem, TodoL
 
 const ResponsiveGridLayout = WidthProvider(GridLayout);
 const OVERVIEW_LAYOUT_STORAGE_KEY = 'ourhome.overview.layout.v1';
+const ACTIVE_WIDGETS_KEY = 'ourhome.overview.widgets.v1';
 const SHOW_TIME_THEME_TOGGLES = (import.meta.env.VITE_SHOW_TIME_THEME_TOGGLES ?? '').toLowerCase() === 'true';
 type GridLayoutItem = {
   i: string;
@@ -21,12 +22,36 @@ const HOUSEHOLD_MEMBERS = [
   { id: 'max', name: 'Max', avatar: '🧔🏻' },
 ];
 const HOUSEHOLD_AVATARS = Object.fromEntries(HOUSEHOLD_MEMBERS.map((member) => [member.name, member.avatar])) as Record<string, string>;
-const defaultOverviewLayout: GridLayoutItem[] = [
-  { i: 'grocery', x: 0, y: 0, w: 2, h: 2, minW: 1, minH: 1 },
-  { i: 'todos', x: 2, y: 0, w: 2, h: 2, minW: 1, minH: 1 },
-  { i: 'events', x: 0, y: 2, w: 2, h: 2, minW: 1, minH: 1 },
-  { i: 'notes', x: 2, y: 2, w: 2, h: 2, minW: 1, minH: 1 },
+type WidgetMeta = {
+  id: string;
+  label: string;
+  icon: string;
+  navPage: number;
+  defaultLayout: GridLayoutItem;
+};
+
+const WIDGET_REGISTRY: WidgetMeta[] = [
+  { id: 'grocery', label: 'Grocery Summary', icon: '🛒', navPage: 1, defaultLayout: { i: 'grocery', x: 0, y: 0, w: 2, h: 2, minW: 1, minH: 1 } },
+  { id: 'todos',   label: 'Todo Summary',    icon: '✅', navPage: 2, defaultLayout: { i: 'todos',   x: 2, y: 0, w: 2, h: 2, minW: 1, minH: 1 } },
+  { id: 'events',  label: 'Event Summary',   icon: '📅', navPage: 3, defaultLayout: { i: 'events',  x: 0, y: 2, w: 2, h: 2, minW: 1, minH: 1 } },
+  { id: 'notes',   label: 'Latest Note',     icon: '📝', navPage: 4, defaultLayout: { i: 'notes',   x: 2, y: 2, w: 2, h: 2, minW: 1, minH: 1 } },
 ];
+
+const DEFAULT_WIDGET_IDS = WIDGET_REGISTRY.map((w) => w.id);
+
+const defaultOverviewLayout: GridLayoutItem[] = WIDGET_REGISTRY.map((w) => w.defaultLayout);
+
+const getInitialActiveWidgets = (): string[] => {
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_WIDGETS_KEY);
+    if (!raw) return DEFAULT_WIDGET_IDS;
+    const parsed = JSON.parse(raw) as string[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_WIDGET_IDS;
+    return parsed.filter((id) => WIDGET_REGISTRY.some((w) => w.id === id));
+  } catch {
+    return DEFAULT_WIDGET_IDS;
+  }
+};
 
 const getInitialOverviewLayout = (): GridLayoutItem[] => {
   try {
@@ -100,6 +125,7 @@ function KioskPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [isCustomizingOverview, setIsCustomizingOverview] = useState(false);
   const [overviewLayout, setOverviewLayout] = useState<GridLayoutItem[]>(getInitialOverviewLayout);
+  const [activeWidgetIds, setActiveWidgetIds] = useState<string[]>(getInitialActiveWidgets);
   const [clock, setClock] = useState(new Date());
   const [grocery, setGrocery] = useState<GroceryItem[]>([]);
   const [groceryLists, setGroceryLists] = useState<GroceryList[]>([]);
@@ -402,7 +428,7 @@ function KioskPage() {
     [todos]
   );
   const openTodos = sortedTodos.filter((item) => !item.completed);
-  const nextEvent = events[0];
+  const nextEvent = events.find((e) => new Date(e.start_time) >= new Date());
   const latestNote = notes[0];
   const nowTime = Date.now();
   const oneDayMs = 24 * 60 * 60 * 1000;
@@ -606,7 +632,7 @@ function KioskPage() {
 
   return (
     <main className="kiosk-shell">
-      <header className="kiosk-header">
+      <header className="kiosk-header" onClick={() => setPageIndex(0)} style={{ cursor: pageIndex !== 0 ? 'pointer' : 'default' }}>
         <div className="title-block">
           <p>{clock.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
@@ -617,7 +643,7 @@ function KioskPage() {
               <button
                 className="btn btn-muted compact header-mini-btn"
                 type="button"
-                onClick={() => setIsCustomizingOverview((current) => !current)}
+                onClick={(e) => { e.stopPropagation(); setIsCustomizingOverview((current) => !current); }}
               >
                 {isCustomizingOverview ? 'Done' : 'Customize layout'}
               </button>
@@ -650,7 +676,7 @@ function KioskPage() {
           <section className="swipe-page">
             <ResponsiveGridLayout
               className={`overview-grid ${isCustomizingOverview ? 'editing' : ''}`}
-              layout={overviewLayout}
+              layout={overviewLayout.filter((item) => activeWidgetIds.includes(item.i))}
               cols={4}
               rowHeight={118}
               margin={[10, 10]}
@@ -658,91 +684,140 @@ function KioskPage() {
               isDraggable={isCustomizingOverview}
               isResizable={isCustomizingOverview}
               onLayoutChange={(layout: GridLayoutItem[]) => {
-                setOverviewLayout(layout);
-                window.localStorage.setItem(OVERVIEW_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+                setOverviewLayout((prev) => {
+                  const inactive = prev.filter((item) => !activeWidgetIds.includes(item.i));
+                  const merged = [...inactive, ...layout];
+                  window.localStorage.setItem(OVERVIEW_LAYOUT_STORAGE_KEY, JSON.stringify(merged));
+                  return merged;
+                });
               }}
             >
-              <div key="grocery" className="overview-grid-item">
-                <Panel title="Grocery Summary" icon="🛒">
-                  <div className="overview-tabs">
-                    {groceryLists.map((list) => (
-                      <button
-                        key={`overview-grocery-tab-${list.id}`}
-                        className={`tab-btn ${activeGroceryListId === list.id ? 'active' : ''}`}
-                        type="button"
-                        onClick={() => setActiveGroceryListId(list.id)}
-                      >
-                        {list.name}
-                      </button>
-                    ))}
+              {activeWidgetIds.map((id) => {
+                const meta = WIDGET_REGISTRY.find((w) => w.id === id)!;
+                return (
+                  <div key={id} className="overview-grid-item" onClick={() => { if (!isCustomizingOverview) setPageIndex(meta.navPage); }}>
+                    {id === 'grocery' && (
+                      <Panel title="Grocery Summary" icon="🛒">
+                        <div className="overview-tabs">
+                          {groceryLists.map((list) => (
+                            <button
+                              key={`overview-grocery-tab-${list.id}`}
+                              className={`tab-btn ${activeGroceryListId === list.id ? 'active' : ''}`}
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setActiveGroceryListId(list.id); }}
+                            >
+                              {list.name}
+                            </button>
+                          ))}
+                        </div>
+                        {sortedGrocery.length === 0 ? (
+                          <p className="muted">Nothing pending</p>
+                        ) : (
+                          sortedGrocery.slice(0, 4).map((item) => (
+                            <p key={`overview-grocery-${item.id}`} className="line-item">
+                              <span className={item.completed ? 'done' : ''}>- {item.text}</span>
+                            </p>
+                          ))
+                        )}
+                      </Panel>
+                    )}
+                    {id === 'todos' && (
+                      <Panel title="Todo Summary" icon="✅">
+                        <div className="overview-tabs">
+                          {todoLists.map((list) => (
+                            <button
+                              key={`overview-todo-tab-${list.id}`}
+                              className={`tab-btn ${activeTodoListId === list.id ? 'active' : ''}`}
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setActiveTodoListId(list.id); }}
+                            >
+                              {list.name}
+                            </button>
+                          ))}
+                        </div>
+                        {sortedTodos.length === 0 ? (
+                          <p className="muted">Nothing pending</p>
+                        ) : (
+                          sortedTodos.slice(0, 4).map((item) => (
+                            <p key={`overview-todo-${item.id}`} className="line-item">
+                              <span className={item.completed ? 'done' : ''}>- {item.text}</span>
+                            </p>
+                          ))
+                        )}
+                      </Panel>
+                    )}
+                    {id === 'events' && (
+                      <Panel title="Event Summary" icon="📅">
+                        {nextEvent ? (
+                          <>
+                            <p className="line-item">
+                              <span>Next event</span>
+                              <strong>{nextEvent.title}</strong>
+                            </p>
+                            <p className="line-item">
+                              <span>{new Date(nextEvent.start_time).toLocaleString()}</span>
+                            </p>
+                          </>
+                        ) : (
+                          <p className="muted">No upcoming events</p>
+                        )}
+                      </Panel>
+                    )}
+                    {id === 'notes' && (
+                      <Panel title="Latest Note" icon="📝">
+                        {latestNote ? (
+                          <p className="line-item">
+                            <strong>{latestNote.title}</strong>
+                            <span>{latestNote.body}</span>
+                          </p>
+                        ) : (
+                          <p className="muted">No notes yet</p>
+                        )}
+                      </Panel>
+                    )}
                   </div>
-                  {sortedGrocery.length === 0 ? (
-                    <p className="muted">Nothing pending</p>
-                  ) : (
-                    sortedGrocery.slice(0, 4).map((item) => (
-                      <p key={`overview-grocery-${item.id}`} className="line-item">
-                        <span className={item.completed ? 'done' : ''}>- {item.text}</span>
-                      </p>
-                    ))
-                  )}
-                </Panel>
-              </div>
-              <div key="todos" className="overview-grid-item">
-                <Panel title="Todo Summary" icon="✅">
-                  <div className="overview-tabs">
-                    {todoLists.map((list) => (
-                      <button
-                        key={`overview-todo-tab-${list.id}`}
-                        className={`tab-btn ${activeTodoListId === list.id ? 'active' : ''}`}
-                        type="button"
-                        onClick={() => setActiveTodoListId(list.id)}
-                      >
-                        {list.name}
-                      </button>
-                    ))}
-                  </div>
-                  {sortedTodos.length === 0 ? (
-                    <p className="muted">Nothing pending</p>
-                  ) : (
-                    sortedTodos.slice(0, 4).map((item) => (
-                      <p key={`overview-todo-${item.id}`} className="line-item">
-                        <span className={item.completed ? 'done' : ''}>- {item.text}</span>
-                      </p>
-                    ))
-                  )}
-                </Panel>
-              </div>
-              <div key="events" className="overview-grid-item">
-                <Panel title="Event Summary" icon="📅">
-                  {nextEvent ? (
-                    <>
-                      <p className="line-item">
-                        <span>Next event</span>
-                        <strong>{nextEvent.title}</strong>
-                      </p>
-                      <p className="line-item">
-                        <span>{new Date(nextEvent.start_time).toLocaleString()}</span>
-                      </p>
-                    </>
-                  ) : (
-                    <p className="muted">No upcoming events</p>
-                  )}
-                </Panel>
-              </div>
-              <div key="notes" className="overview-grid-item">
-                <Panel title="Latest Note" icon="📝">
-                  {latestNote ? (
-                    <p className="line-item">
-                      <strong>{latestNote.title}</strong>
-                      <span>{latestNote.body}</span>
-                    </p>
-                  ) : (
-                    <p className="muted">No notes yet</p>
-                  )}
-                </Panel>
-              </div>
+                );
+              })}
             </ResponsiveGridLayout>
-            {isCustomizingOverview ? <p className="muted layout-help">Drag cards and use corner handles to resize.</p> : null}
+            {isCustomizingOverview && (
+              <div className="widget-picker">
+                <p className="muted layout-help">Drag cards and use corner handles to resize.</p>
+                <div className="widget-picker-list">
+                  {WIDGET_REGISTRY.map((meta) => {
+                    const isActive = activeWidgetIds.includes(meta.id);
+                    return (
+                      <button
+                        key={meta.id}
+                        type="button"
+                        className={`tab-btn ${isActive ? 'active' : 'add'}`}
+                        onClick={() => {
+                          if (isActive) {
+                            const next = activeWidgetIds.filter((id) => id !== meta.id);
+                            setActiveWidgetIds(next);
+                            window.localStorage.setItem(ACTIVE_WIDGETS_KEY, JSON.stringify(next));
+                            const nextLayout = overviewLayout.filter((item) => item.i !== meta.id);
+                            setOverviewLayout(nextLayout);
+                            window.localStorage.setItem(OVERVIEW_LAYOUT_STORAGE_KEY, JSON.stringify(nextLayout));
+                          } else {
+                            const next = [...activeWidgetIds, meta.id];
+                            setActiveWidgetIds(next);
+                            window.localStorage.setItem(ACTIVE_WIDGETS_KEY, JSON.stringify(next));
+                            const maxY = overviewLayout.reduce((m, item) => Math.max(m, item.y + item.h), 0);
+                            const existing = overviewLayout.find((item) => item.i === meta.id);
+                            const entry = existing ?? { ...meta.defaultLayout, y: maxY };
+                            const nextLayout = [...overviewLayout, entry];
+                            setOverviewLayout(nextLayout);
+                            window.localStorage.setItem(OVERVIEW_LAYOUT_STORAGE_KEY, JSON.stringify(nextLayout));
+                          }
+                        }}
+                      >
+                        {meta.icon} {meta.label} {isActive ? '×' : '+'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="swipe-page">

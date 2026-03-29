@@ -432,6 +432,10 @@ textarea,
   height: 100%;
 }
 
+.overview-grid:not(.editing) .overview-grid-item {
+  cursor: pointer;
+}
+
 .overview-grid .panel {
   padding: 1rem;
   overflow: hidden;
@@ -488,6 +492,17 @@ textarea,
 
 .layout-help {
   margin-top: 0.52rem;
+}
+
+.widget-picker {
+  margin-top: 0.35rem;
+}
+
+.widget-picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .hero-card {
@@ -1512,8 +1527,28 @@ textarea:focus,
     justify-items: center;
   }
 
+  .kiosk-header {
+    height: auto;
+  }
+
   .time-stack {
     justify-self: center;
+  }
+
+  .clock {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+
+  .title-block p {
+    font-size: clamp(1rem, 4.5vw, 1.4rem);
+  }
+
+  .weather-main {
+    font-size: clamp(1rem, 4.5vw, 1.4rem);
+  }
+
+  .sun-times {
+    font-size: clamp(0.8rem, 3vw, 1rem);
   }
 
   .action-buttons {
