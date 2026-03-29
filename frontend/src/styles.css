@@ -215,6 +215,7 @@ body {
     radial-gradient(45% 40% at 84% 78%, var(--mesh-4) 0%, rgba(0, 0, 0, 0) 62%),
     linear-gradient(180deg, var(--bg-base-top) 0%, var(--bg-base-bottom) 100%);
   transition: background-image 700ms ease, color 450ms ease;
+  overflow: hidden;
 }
 
 body::before,
@@ -291,8 +292,12 @@ textarea,
 }
 
 .kiosk-shell {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: none;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-shell {
@@ -300,8 +305,12 @@ textarea,
 }
 
 .kiosk-content {
+  flex: 1;
+  min-height: 0;
   width: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .kiosk-header {
@@ -311,6 +320,8 @@ textarea,
   align-items: center;
   gap: 0.2rem;
   margin-bottom: 0.35rem;
+  height: 20vh;
+  flex-shrink: 0;
 }
 
 .title-block {
@@ -323,7 +334,7 @@ textarea,
   color: var(--muted);
   text-align: center;
   white-space: nowrap;
-  font-size: clamp(1.35rem, 2vw, 2rem);
+  font-size: clamp(1.5rem, 4vh, 3rem);
   font-weight: 560;
   letter-spacing: -0.015em;
 }
@@ -338,7 +349,7 @@ textarea,
 }
 
 .clock {
-  font-size: clamp(2.25rem, 4vw, 3.8rem);
+  font-size: clamp(3rem, 9vh, 7rem);
   font-weight: 640;
   letter-spacing: -0.03em;
   white-space: nowrap;
@@ -365,14 +376,14 @@ textarea,
   display: inline-flex;
   align-items: center;
   gap: 0.32rem;
-  font-size: clamp(1.35rem, 2.25vw, 2.1rem);
+  font-size: clamp(1.5rem, 3.5vh, 2.8rem);
   font-weight: 600;
 }
 
 .sun-times {
   display: inline-flex;
   gap: 0.7rem;
-  font-size: clamp(0.95rem, 1.25vw, 1.2rem);
+  font-size: clamp(1rem, 2vh, 1.6rem);
   font-weight: 560;
 }
 
@@ -381,6 +392,8 @@ textarea,
   width: 100%;
   overflow: hidden;
   touch-action: pan-y;
+  flex: 1;
+  min-height: 0;
 }
 
 .swipe-track {
@@ -394,9 +407,14 @@ textarea,
   width: 100%;
 }
 
+.swipe-page:first-child {
+  overflow: hidden;
+}
+
 .widget-page {
   margin-top: 0.3rem;
-  min-height: clamp(74vh, calc(100vh - 12.2rem), 88vh);
+  min-height: 0;
+  height: 100%;
   display: flex;
 }
 
@@ -416,7 +434,7 @@ textarea,
 
 .overview-grid .panel {
   padding: 1rem;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .overview-grid .panel h2 {
@@ -429,6 +447,21 @@ textarea,
   margin: 0.35rem 0;
   padding: 0.2rem 0;
   line-height: 1.28;
+}
+
+.overview-grid .line-item strong,
+.overview-grid .line-item span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+}
+
+.overview-grid .line-item strong {
+  -webkit-line-clamp: 1;
+}
+
+.overview-grid .line-item span {
+  -webkit-line-clamp: 2;
 }
 
 .overview-tabs {
@@ -530,6 +563,11 @@ textarea {
   display: grid;
   justify-items: end;
   gap: 0.45rem;
+}
+
+.kiosk-footer:empty {
+  display: none;
+  margin: 0;
 }
 
 .theme-debug-control {
@@ -1326,7 +1364,8 @@ textarea:focus,
 
 .swipe-indicators.overview-gap {
   margin-top: 0;
-  transform: translateY(calc(-1.45rem - 10px));
+  margin-bottom: -0.8rem;
+  transform: translateY(calc(-1.45rem - 4px));
 }
 
 .swipe-indicators.detail-gap {
