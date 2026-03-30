@@ -94,8 +94,9 @@ const addDays = (date: Date, days: number) => {
 
 const getTimeTheme = (date: Date, sunsetTime: Date | null): 'dawn' | 'morning' | 'afternoon' | 'evening' | 'night' => {
   const hour = date.getHours();
-  if (hour >= 5 && hour < 8) return 'dawn';
-  if (hour >= 8 && hour < 12) return 'morning';
+  const minutesNowEarly = hour * 60 + date.getMinutes();
+  if (minutesNowEarly >= 5 * 60 && minutesNowEarly < 9 * 60 + 30) return 'dawn';
+  if (minutesNowEarly >= 9 * 60 + 30 && minutesNowEarly < 12 * 60) return 'morning';
   const minutesNow = hour * 60 + date.getMinutes();
   const sunsetMinutes = sunsetTime ? sunsetTime.getHours() * 60 + sunsetTime.getMinutes() : 18 * 60;
   if (minutesNow >= 12 * 60 && minutesNow < sunsetMinutes) return 'afternoon';

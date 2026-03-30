@@ -41,23 +41,34 @@
 }
 
 :root[data-time-theme='dawn'] {
-  --text: #1e2129;
-  --muted: #746772;
+  --text: #f0e2d4;
+  --muted: #b8967e;
+  --card: rgba(32, 15, 24, 0.78);
+  --card-solid: #270f1c;
+  --card-border: rgba(210, 100, 70, 0.22);
+  --card-shadow: 0 22px 48px rgba(2, 3, 10, 0.52);
+  --surface-1: rgba(42, 20, 32, 0.78);
+  --surface-2: rgba(52, 26, 42, 0.88);
+  --surface-3: rgba(62, 32, 50, 0.92);
   --primary: #ff7b35;
   --primary-press: #c85a22;
-  --mesh-1: rgba(255, 127, 58, 0.56);
-  --mesh-2: rgba(255, 195, 95, 0.48);
-  --mesh-3: rgba(255, 88, 70, 0.46);
-  --mesh-4: rgba(221, 120, 255, 0.32);
-  --bg-base-top: #ffe9cf;
-  --bg-base-bottom: #ffcfa4;
-  --sun-opacity: 0.92;
-  --sun-size: 360px;
+  --danger: #ff8090;
+  --danger-soft: rgba(255, 110, 130, 0.2);
+  --outline: 0 0 0 3px rgba(255, 123, 53, 0.3);
+  --scene-dim-overlay: rgba(4, 2, 8, 0.45);
+  --mesh-1: rgba(255, 100, 40, 0.38);
+  --mesh-2: rgba(180, 60, 120, 0.32);
+  --mesh-3: rgba(255, 60, 50, 0.28);
+  --mesh-4: rgba(80, 30, 90, 0.34);
+  --bg-base-top: #2a0f22;
+  --bg-base-bottom: #0e0610;
+  --sun-opacity: 0.72;
+  --sun-size: 320px;
   --sun-x: 12%;
-  --sun-y: 84%;
-  --sun-core: rgba(255, 232, 169, 0.96);
-  --sun-ring: rgba(255, 173, 84, 0.58);
-  --sun-glow: rgba(255, 112, 56, 0.35);
+  --sun-y: 92%;
+  --sun-core: rgba(255, 210, 130, 0.88);
+  --sun-ring: rgba(255, 130, 60, 0.48);
+  --sun-glow: rgba(200, 70, 40, 0.3);
 }
 
 :root[data-time-theme='morning'] {
